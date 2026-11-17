@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suivi de lectures</title>
+<style>
+:root{
+  --bg:#f6f5f1;--surface:#fff;--ink:#1d1d1b;--muted:#6b6a64;--line:#e4e2da;
+  --accent:#2f5d50;--accent-ink:#fff;--accent-soft:#e3eee9;
+  --warn:#b4570a;--warn-soft:#fdf0e1;--bad:#b3261e;--bad-soft:#fbe9e7;--ok:#2f7d4f;
+  --shadow:0 1px 2px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#161715;--surface:#1f211e;--ink:#ecebe6;--muted:#9a988f;--line:#33352f;
+    --accent:#6fb59f;--accent-ink:#0f1a16;--accent-soft:#23332d;
+    --warn:#e9a35a;--warn-soft:#33281a;--bad:#ef8a82;--bad-soft:#3a1f1c;--ok:#7bc79a;--shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161715;--surface:#1f211e;--ink:#ecebe6;--muted:#9a988f;--line:#33352f;
+  --accent:#6fb59f;--accent-ink:#0f1a16;--accent-soft:#23332d;
+  --warn:#e9a35a;--warn-soft:#33281a;--bad:#ef8a82;--bad-soft:#3a1f1c;--ok:#7bc79a;--shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 80px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px}
+h1{font-size:22px;margin:0;letter-spacing:-.01em}
+.stats{color:var(--muted);font-size:13px}
+button,select,input,textarea{font:inherit;color:inherit}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;box-shadow:var(--shadow)}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--bad)}
+.btn.sm{padding:3px 9px;font-size:13px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+#drop{border:2px dashed var(--line);border-radius:12px;background:var(--surface);padding:18px;text-align:center;transition:.15s;margin-bottom:16px}
+#drop.over{border-color:var(--accent);background:var(--accent-soft)}
+#drop p{margin:0 0 10px;color:var(--muted)}
+#drop .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#drop input[type=text]{flex:1 1 280px;max-width:480px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.alerts{display:grid;gap:8px;margin-bottom:16px}
+.alert{padding:10px 14px;border-radius:10px;font-size:14px;display:flex;gap:8px;align-items:flex-start}
+.alert.bad{background:var(--bad-soft);color:var(--bad)}
+.alert.warn{background:var(--warn-soft);color:var(--warn)}
+.alert b{font-weight:600}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.filters input,.filters select{padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.filters input[type=search]{flex:1 1 180px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);border-radius:999px;padding:3px 11px;background:var(--surface);cursor:pointer;font-size:13px}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.group h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px;font-weight:600}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
+.card.done{opacity:.6}
+.card-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.title{font-weight:600;font-size:16px;margin:0;word-break:break-word}
+.title a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
+.title a:hover{border-color:var(--accent)}
+.meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
+.tag{font-size:12px;padding:2px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:500}
+.tag.type{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.tag.prio-h{background:var(--bad-soft);color:var(--bad)}
+.due{font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.due.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.due.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.ctx{margin:8px 0 0;color:var(--muted);font-size:14px;white-space:pre-wrap}
+.ctx b{color:var(--ink);font-weight:600}
+.prog{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.bar{flex:1 1 160px;height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .2s}
+.pct{font-size:13px;color:var(--muted);min-width:96px}
+.actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.status{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.status button{border:0;background:transparent;padding:3px 10px;cursor:pointer;font-size:13px;border-right:1px solid var(--line)}
+.status button:last-child{border:0}
+.status button.on{background:var(--accent);color:var(--accent-ink)}
+.empty{text-align:center;color:var(--muted);padding:40px 0}
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);padding:0;width:min(620px,calc(100vw - 24px));max-height:92vh}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+form.edit{padding:18px;display:grid;gap:12px}
+form.edit h3{margin:0;font-size:18px}
+label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+label input,label select,label textarea{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+textarea{min-height:64px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:520px){.grid2,.grid3{grid-template-columns:1fr}}
+.foot{display:flex;justify-content:space-between;gap:8px;margin-top:4px}
+.fileinfo{font-size:13px;color:var(--muted)}
+.hint{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>📚 Suivi de lectures</h1>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="toolbar">
+      <button class="btn" id="btnNotif" title="Recevoir des notifications navigateur tant que cet onglet est ouvert">🔔 Activer les rappels</button>
+      <button class="btn" id="btnIcs" title="Exporter toutes les deadlines vers votre agenda (.ics) avec alarme">📅 Export agenda</button>
+      <button class="btn" id="btnExport">⬇ Sauvegarde</button>
+      <button class="btn" id="btnImport">⬆ Restaurer</button>
+      <input type="file" id="importFile" accept="application/json" hidden>
+    </div>
+  </header>
+
+  <div id="drop">
+    <p>Déposez ici un ou plusieurs <b>PDF</b> (ou un lien glissé depuis le navigateur) — ou collez une <b>URL</b></p>
+    <div class="row">
+      <input type="text" id="urlInput" placeholder="https://… (Entrée pour ajouter)">
+      <button class="btn primary" id="btnAddUrl">Ajouter l'URL</button>
+      <button class="btn" id="btnPick">Choisir un PDF…</button>
+      <button class="btn" id="btnManual">+ Entrée manuelle</button>
+      <input type="file" id="pdfPick" accept="application/pdf" multiple hidden>
+    </div>
+  </div>
+
+  <div class="alerts" id="alerts"></div>
+
+  <div class="filters">
+    <input type="search" id="q" placeholder="Rechercher titre, contexte, notes…">
+    <select id="fProject"></select>
+    <select id="fSort">
+      <option value="deadline">Tri : deadline</option>
+      <option value="priority">Tri : priorité</option>
+      <option value="added">Tri : ajout récent</option>
+      <option value="progress">Tri : avancement</option>
+    </select>
+    <select id="fGroup">
+      <option value="project">Grouper par projet</option>
+      <option value="none">Liste simple</option>
+    </select>
+    <div class="chips" id="fStatus"></div>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<dialog id="dlg">
+  <form class="edit" id="form" method="dialog">
+    <h3 id="dlgTitle">Lecture</h3>
+    <label>Titre <input name="title" required></label>
+    <label>URL (optionnel) <input name="url" type="url" placeholder="https://…"></label>
+    <div class="fileinfo" id="fileinfo"></div>
+    <div class="grid2">
+      <label>Projet / contexte
+        <input name="project" list="projects" placeholder="ex : Mémoire, Veille IA, Client X…">
+        <datalist id="projects"></datalist>
+      </label>
+      <label>Priorité
+        <select name="priority"><option value="1">Normale</option><option value="2">Haute</option><option value="0">Basse</option></select>
+      </label>
+    </div>
+    <label>Pourquoi lire ceci ? (utilité dans le projet)
+      <textarea name="why" placeholder="ex : Source clé pour le chapitre 3 ; à lire avant la réunion de cadrage…"></textarea>
+    </label>
+    <div class="grid2">
+      <label>Deadline <input name="deadline" type="date"></label>
+      <label>Rappel
+        <select name="remind">
+          <option value="">Aucun rappel</option>
+          <option value="0">Le jour même</option>
+          <option value="1">1 jour avant</option>
+          <option value="2">2 jours avant</option>
+          <option value="3">3 jours avant</option>
+          <option value="7">1 semaine avant</option>
+        </select>
+      </label>
+    </div>
+    <div class="grid3">
+      <label>Pages totales <input name="pages" type="number" min="0"></label>
+      <label>Page actuelle <input name="page" type="number" min="0"></label>
+      <label>Avancement % (si pas de pages) <input name="progress" type="number" min="0" max="100"></label>
+    </div>
+    <label>Notes <textarea name="notes" placeholder="Idées clés, citations, questions…"></textarea></label>
+    <div class="foot">
+      <button type="button" class="btn danger" id="btnDelete">Supprimer</button>
+      <span>
+        <button type="button" class="btn" id="btnCancel">Annuler</button>
+        <button type="submit" class="btn primary">Enregistrer</button>
+      </span>
+    </div>
+  </form>
+</dialog>
+
+<script>
+"use strict";
+const LS_KEY = "reading-tracker:v1";
+const STATUS = [["todo","À lire"],["reading","En cours"],["done","Terminé"]];
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+/* ---------- stockage : métadonnées en localStorage, PDF en IndexedDB ---------- */
+let items = [];
+let notified = {};
+try {
+  const d = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+  items = d.items || []; notified = d.notified || {};
+} catch (e) {}
+const save = () => { try { localStorage.setItem(LS_KEY, JSON.stringify({items, notified})); } catch (e) { alert("Stockage local indisponible : exportez vos données."); } };
+
+const db = new Promise((res, rej) => {
+  const r = indexedDB.open("reading-tracker-files", 1);
+  r.onupgradeneeded = () => r.result.createObjectStore("files");
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+});
+async function fileOp(mode, fn) {
+  const d = await db;
+  return new Promise((res, rej) => {
+    const tx = d.transaction("files", mode); const req = fn(tx.objectStore("files"));
+    tx.oncomplete = () => res(req && req.result); tx.onerror = () => rej(tx.error);
+  });
+}
+const putFile = (id, blob) => fileOp("readwrite", s => s.put(blob, id));
+const getFile = id => fileOp("readonly", s => s.get(id));
+const delFile = id => fileOp("readwrite", s => s.delete(id));
+
+/* ---------- dates ---------- */
+const today0 = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const parseD = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const daysTo = s => Math.round((parseD(s) - today0()) / 864e5);
+const fmtD = s => parseD(s).toLocaleDateString("fr-FR", {day:"numeric", month:"short", year:"numeric"});
+function dueInfo(it) {
+  if (!it.deadline) return null;
+  const n = daysTo(it.deadline);
+  if (it.status === "done") return {cls:"", txt:"⏱ " + fmtD(it.deadline)};
+  if (n < 0) return {cls:"bad", txt:`En retard de ${-n} j · ${fmtD(it.deadline)}`};
+  if (n === 0) return {cls:"bad", txt:"Aujourd'hui"};
+  if (n === 1) return {cls:"warn", txt:"Demain"};
+  if (n <= 3) return {cls:"warn", txt:`Dans ${n} j · ${fmtD(it.deadline)}`};
+  return {cls:"", txt:`Dans ${n} j · ${fmtD(it.deadline)}`};
+}
+const pct = it => it.pages > 0 ? Math.min(100, Math.round((it.page || 0) / it.pages * 100)) : (it.progress || 0);
+const remindDate = it => it.deadline && it.remind !== "" && it.remind != null
+  ? new Date(parseD(it.deadline).getTime() - Number(it.remind) * 864e5 + 9 * 36e5) : null; // 9h00 locale
+
+/* ---------- création ---------- */
+function titleFromUrl(u) {
+  try {
+    const x = new URL(u); const last = decodeURIComponent(x.pathname.split("/").filter(Boolean).pop() || "");
+    const t = last.replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[-_+]+/g, " ").trim();
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) + " — " + x.hostname.replace(/^www\./, "") : x.hostname.replace(/^www\./, "");
+  } catch (e) { return u; }
+}
+async function countPdfPages(file) {
+  try {
+    if (file.size > 80e6) return 0;
+    const txt = new TextDecoder("latin1").decode(await file.arrayBuffer());
+    let max = 0; for (const m of txt.matchAll(/\/Type\s*\/Pages[^>]*?\/Count\s+(\d+)|\/Count\s+(\d+)[^>]*?\/Type\s*\/Pages/g)) max = Math.max(max, +(m[1] || m[2]));
+    return max;
+  } catch (e) { return 0; }
+}
+function blank(o) {
+  return Object.assign({id: uid(), title:"", url:"", project:"", why:"", deadline:"", remind:"", priority:"1",
+    pages:0, page:0, progress:0, notes:"", status:"todo", kind:"manual", fileName:"", added:Date.now()}, o);
+}
+async function addPdf(file) {
+  const it = blank({title: file.name.replace(/\.pdf$/i, ""), kind:"pdf", fileName: file.name, pages: await countPdfPages(file)});
+  await putFile(it.id, file); items.push(it); save(); render(); return it;
+}
+function addUrl(u) {
+  u = u.trim(); if (!u) return null;
+  if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+  const it = blank({title: titleFromUrl(u), url: u, kind: /\.pdf($|\?)/i.test(u) ? "pdf-link" : "url"});
+  items.push(it); save(); render(); return it;
+}
+
+/* ---------- édition ---------- */
+const dlg = $("#dlg"), form = $("#form");
+let editing = null, isNew = false;
+function openEdit(it, fresh = false) {
+  editing = it; isNew = fresh;
+  $("#dlgTitle").textContent = fresh ? "Nouvelle lecture" : "Modifier la lecture";
+  for (const el of form.elements) if (el.name) el.value = it[el.name] ?? "";
+  $("#fileinfo").textContent = it.kind === "pdf" ? "📄 PDF stocké localement : " + it.fileName : "";
+  $("#btnDelete").style.visibility = fresh ? "hidden" : "visible";
+  dlg.showModal(); form.elements.title.focus();
+}
+form.addEventListener("submit", e => {
+  e.preventDefault();
+  const f = Object.fromEntries(new FormData(form));
+  Object.assign(editing, f, {pages:+f.pages || 0, page:+f.page || 0, progress:Math.min(100, +f.progress || 0)});
+  if (editing.pages && editing.page > editing.pages) editing.page = editing.pages;
+  autoStatus(editing);
+  if (isNew) items.push(editing);
+  delete notified[editing.id];
+  save(); render(); dlg.close();
+});
+$("#btnCancel").onclick = () => dlg.close();
+$("#btnDelete").onclick = async () => {
+  if (!confirm("Supprimer cette lecture ?")) return;
+  items = items.filter(i => i !== editing); await delFile(editing.id).catch(()=>{}); save(); render(); dlg.close();
+};
+function autoStatus(it) {
+  const p = pct(it);
+  if (p >= 100) it.status = "done"; else if (p > 0 && it.status === "todo") it.status = "reading";
+}
+
+/* ---------- rendu ---------- */
+const state = {q:"", project:"", sort:"deadline", group:"project", status:new Set(["todo","reading"])};
+function renderFilters() {
+  const projects = [...new Set(items.map(i => i.project).filter(Boolean))].sort();
+  $("#fProject").innerHTML = `<option value="">Tous les projets</option>` + projects.map(p => `<option ${p===state.project?"selected":""}>${esc(p)}</option>`).join("");
+  $("#projects").innerHTML = projects.map(p => `<option value="${esc(p)}">`).join("");
+  $("#fStatus").innerHTML = STATUS.map(([k,l]) => `<span class="chip ${state.status.has(k)?"on":""}" data-s="${k}">${l}</span>`).join("");
+}
+function sorted(list) {
+  const f = {
+    deadline: (a,b) => (a.deadline || "9999") .localeCompare(b.deadline || "9999") || b.priority - a.priority,
+    priority: (a,b) => b.priority - a.priority || (a.deadline || "9999").localeCompare(b.deadline || "9999"),
+    added: (a,b) => b.added - a.added,
+    progress: (a,b) => pct(b) - pct(a),
+  }[state.sort];
+  return list.slice().sort(f);
+}
+function card(it) {
+  const d = dueInfo(it), p = pct(it), rd = remindDate(it);
+  const kindLbl = {pdf:"📄 PDF", url:"🔗 Lien", "pdf-link":"🔗 PDF en ligne", manual:"✍️ Manuel"}[it.kind] || "";
+  const title = it.url ? `<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.title)}</a>`
+    : it.kind === "pdf" ? `<a href="#" data-act="open">${esc(it.title)}</a>` : esc(it.title);
+  return `<article class="card ${it.status==="done"?"done":""}" data-id="${it.id}">
+    <div class="card-top">
+      <div>
+        <h3 class="title">${title}</h3>
+        <div class="meta">
+          ${it.project ? `<span class="tag">${esc(it.project)}</span>` : ""}
+          <span class="tag type">${kindLbl}</span>
+          ${it.priority == 2 ? `<span class="tag prio-h">Priorité haute</span>` : ""}
+          ${d ? `<span class="due ${d.cls}">${d.txt}</span>` : ""}
+          ${rd && it.status !== "done" ? `<span class="due">🔔 ${rd.toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</span>` : ""}
+        </div>
+      </div>
+      <button class="btn sm" data-act="edit">Modifier</button>
+    </div>
+    ${it.why ? `<p class="ctx"><b>Pourquoi :</b> ${esc(it.why)}</p>` : ""}
+    ${it.notes ? `<p class="ctx"><b>Notes :</b> ${esc(it.notes)}</p>` : ""}
+    <div class="prog">
+      <div class="bar"><i style="width:${p}%"></i></div>
+      <span class="pct">${it.pages ? `p. ${it.page||0} / ${it.pages} · ` : ""}${p}%</span>
+      ${it.pages ? `<button class="btn sm" data-act="pminus">−10 p</button><button class="btn sm" data-act="pplus">+10 p</button>`
+                 : `<button class="btn sm" data-act="minus">−10 %</button><button class="btn sm" data-act="plus">+10 %</button>`}
+    </div>
+    <div class="actions">
+      <span class="status">${STATUS.map(([k,l]) => `<button data-act="status" data-s="${k}" class="${it.status===k?"on":""}">${l}</button>`).join("")}</span>
+      ${it.kind === "pdf" ? `<button class="btn sm" data-act="open">Ouvrir le PDF</button>` : ""}
+      ${it.deadline ? `<button class="btn sm" data-act="ics">📅 Agenda</button>` : ""}
+    </div>
+  </article>`;
+}
+function render() {
+  renderFilters();
+  const q = state.q.toLowerCase();
+  let list = items.filter(i => state.status.has(i.status)
+    && (!state.project || i.project === state.project)
+    && (!q || [i.title, i.why, i.notes, i.project, i.url].join(" ").toLowerCase().includes(q)));
+  list = sorted(list);
+  const open = items.filter(i => i.status !== "done");
+  $("#stats").textContent = `${open.length} à lire · ${items.length - open.length} terminées`;
+  renderAlerts();
+  if (!list.length) { $("#list").innerHTML = `<div class="empty">${items.length ? "Aucun résultat avec ces filtres." : "Aucune lecture pour l'instant. Déposez un PDF ou collez une URL ci-dessus."}</div>`; return; }
+  if (state.group === "none") { $("#list").innerHTML = list.map(card).join(""); return; }
+  const groups = {};
+  list.forEach(i => (groups[i.project || "Sans projet"] ||= []).push(i));
+  $("#list").innerHTML = Object.keys(groups).sort((a,b) => a === "Sans projet" ? 1 : b === "Sans projet" ? -1 : a.localeCompare(b))
+    .map(g => `<section class="group"><h2>${esc(g)} · ${groups[g].length}</h2>${groups[g].map(card).join("")}</section>`).join("");
+}
+function renderAlerts() {
+  const open = items.filter(i => i.status !== "done" && i.deadline);
+  const late = open.filter(i => daysTo(i.deadline) < 0), soon = open.filter(i => { const n = daysTo(i.deadline); return n >= 0 && n <= 3; });
+  const due = open.filter(i => { const r = remindDate(i); return r && r <= new Date() && daysTo(i.deadline) >= 0; });
+  const list = a => a.map(i => esc(i.title)).join(" · ");
+  $("#alerts").innerHTML =
+    (late.length ? `<div class="alert bad">⚠️ <div><b>${late.length} en retard :</b> ${list(late)}</div></div>` : "") +
+    (soon.length ? `<div class="alert warn">⏰ <div><b>À rendre sous 3 jours :</b> ${list(soon)}</div></div>` : "") +
+    (due.filter(i => !soon.includes(i)).length ? `<div class="alert warn">🔔 <div><b>Rappels :</b> ${list(due.filter(i => !soon.includes(i)))}</div></div>` : "");
+}
+
+/* ---------- interactions liste ---------- */
+$("#list").addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  e.preventDefault();
+  const it = items.find(i => i.id === b.closest(".card").dataset.id); if (!it) return;
+  const act = b.dataset.act;
+  if (act === "edit") return openEdit(it);
+  if (act === "status") { it.status = b.dataset.s; if (it.status === "done") { it.progress = 100; if (it.pages) it.page = it.pages; } }
+  if (act === "plus" || act === "minus") { it.progress = Math.max(0, Math.min(100, (it.progress||0) + (act==="plus"?10:-10))); autoStatus(it); }
+  if (act === "pplus" || act === "pminus") { it.page = Math.max(0, Math.min(it.pages, (it.page||0) + (act==="pplus"?10:-10))); autoStatus(it); }
+  if (act === "ics") return downloadIcs([it]);
+  if (act === "open") {
+    const blob = await getFile(it.id); if (!blob) return alert("Fichier introuvable dans ce navigateur.");
+    window.open(URL.createObjectURL(blob), "_blank"); return;
+  }
+  save(); render();
+});
+$("#q").oninput = e => { state.q = e.target.value; render(); };
+$("#fProject").onchange = e => { state.project = e.target.value; render(); };
+$("#fSort").onchange = e => { state.sort = e.target.value; render(); };
+$("#fGroup").onchange = e => { state.group = e.target.value; render(); };
+$("#fStatus").onclick = e => { const s = e.target.dataset.s; if (!s) return; state.status.has(s) ? state.status.delete(s) : state.status.add(s); render(); };
+
+/* ---------- dépôt / ajout ---------- */
+async function handleFiles(files) {
+  const pdfs = [...files].filter(f => f.type === "application/pdf" || /\.pdf$/i.test(f.name));
+  if (!pdfs.length) return alert("Seuls les fichiers PDF sont acceptés.");
+  let last; for (const f of pdfs) last = await addPdf(f);
+  if (pdfs.length === 1) openEdit(last);
+}
+const drop = $("#drop");
+["dragenter","dragover"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave","drop"].forEach(ev => document.addEventListener(ev, e => { if (ev === "drop" || e.target === document.documentElement || !e.relatedTarget) drop.classList.remove("over"); }));
+document.addEventListener("drop", e => {
+  e.preventDefault(); drop.classList.remove("over");
+  if (e.dataTransfer.files.length) return handleFiles(e.dataTransfer.files);
+  const u = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+  if (u && /^https?:\/\//i.test(u.trim())) { const it = addUrl(u.trim().split("\n")[0]); it && openEdit(it); }
+});
+document.addEventListener("paste", e => {
+  if (e.target.matches("input,textarea")) return;
+  const t = (e.clipboardData.getData("text") || "").trim();
+  if (/^https?:\/\/\S+$/i.test(t)) { const it = addUrl(t); it && openEdit(it); }
+});
+$("#btnPick").onclick = () => $("#pdfPick").click();
+$("#pdfPick").onchange = e => { handleFiles(e.target.files); e.target.value = ""; };
+const submitUrl = () => { const it = addUrl($("#urlInput").value); if (it) { $("#urlInput").value = ""; openEdit(it); } };
+$("#btnAddUrl").onclick = submitUrl;
+$("#urlInput").onkeydown = e => e.key === "Enter" && submitUrl();
+$("#btnManual").onclick = () => openEdit(blank(), true);
+
+/* ---------- agenda (.ics) ---------- */
+function downloadIcs(list) {
+  const rows = list.filter(i => i.deadline && i.status !== "done"); if (!rows.length) return alert("Aucune deadline à exporter.");
+  const ymd = s => s.replace(/-/g, ""), stamp = new Date().toISOString().replace(/[-:]|\.\d+/g, "");
+  const ics = s => String(s || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  const next = s => { const d = parseD(s); d.setDate(d.getDate() + 1); return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`; };
+  const out = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Suivi de lectures//FR","CALSCALE:GREGORIAN"];
+  for (const i of rows) {
+    out.push("BEGIN:VEVENT", `UID:${i.id}@reading-tracker`, `DTSTAMP:${stamp}`,
+      `DTSTART;VALUE=DATE:${ymd(i.deadline)}`, `DTEND;VALUE=DATE:${next(i.deadline)}`,
+      `SUMMARY:${ics("Lire : " + i.title + (i.project ? " [" + i.project + "]" : ""))}`,
+      `DESCRIPTION:${ics([i.why, i.url, "Avancement : " + pct(i) + "%"].filter(Boolean).join("\n"))}`);
+    if (i.remind !== "" && i.remind != null) {
+      const h = Number(i.remind) * 24 - 9; // alarme à 9h00, relative au début (minuit) de l'événement
+      out.push("BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${ics("Lecture : " + i.title)}`, h > 0 ? `TRIGGER:-PT${h}H` : "TRIGGER:PT9H", "END:VALARM");
+    }
+    out.push("END:VEVENT");
+  }
+  out.push("END:VCALENDAR");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([out.join("\r\n")], {type:"text/calendar"}));
+  a.download = list.length === 1 ? "lecture.ics" : "lectures.ics"; a.click();
+}
+$("#btnIcs").onclick = () => downloadIcs(items);
+
+/* ---------- notifications ---------- */
+function checkReminders() {
+  const now = new Date();
+  for (const it of items) {
+    if (it.status === "done") continue;
+    const r = remindDate(it); if (!r || r > now || notified[it.id] === it.deadline + it.remind) continue;
+    if ("Notification" in window && Notification.permission === "granted")
+      new Notification("📚 Rappel de lecture", {body: `${it.title}${it.project ? " ("+it.project+")" : ""} — deadline ${fmtD(it.deadline)}`});
+    notified[it.id] = it.deadline + it.remind; save();
+  }
+  renderAlerts();
+}
+function updateNotifBtn() {
+  const b = $("#btnNotif");
+  if (!("Notification" in window)) { b.hidden = true; return; }
+  b.textContent = Notification.permission === "granted" ? "🔔 Rappels actifs" : "🔔 Activer les rappels";
+}
+$("#btnNotif").onclick = async () => { await Notification.requestPermission(); updateNotifBtn(); checkReminders(); };
+
+/* ---------- sauvegarde / restauration (métadonnées + PDF) ---------- */
+$("#btnExport").onclick = async () => {
+  const files = {};
+  for (const it of items) if (it.kind === "pdf") {
+    const b = await getFile(it.id); if (b) files[it.id] = await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); });
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({version:1, items, files})], {type:"application/json"}));
+  a.download = `lectures-${new Date().toISOString().slice(0,10)}.json`; a.click();
+};
+$("#btnImport").onclick = () => $("#importFile").click();
+$("#importFile").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!Array.isArray(d.items)) throw 0;
+    if (!confirm(`Importer ${d.items.length} lecture(s) ? Les entrées de même identifiant seront remplacées.`)) return;
+    for (const it of d.items) { items = items.filter(x => x.id !== it.id); items.push(it); }
+    for (const [id, url] of Object.entries(d.files || {})) await putFile(id, await (await fetch(url)).blob());
+    save(); render();
+  } catch (err) { alert("Fichier de sauvegarde invalide."); }
+};
+
+/* ---------- init ---------- */
+render(); updateNotifBtn(); checkReminders();
+setInterval(checkReminders, 60000);
+</script>
+</body>
+</html>
